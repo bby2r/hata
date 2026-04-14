@@ -1,182 +1,135 @@
-# Restify API & MCP — примеры использования
+# Restify MCP — примеры использования
 
-База: **https://hata-new.doxer.work**
-Префикс API: `/api/restify`
-MCP-сервер: `hatamatata-restify` (регистрируется в `.mcp.json`)
+MCP-сервер: `hatamatata-restify`
+Транспорт: stdio через SSH до staging (`.mcp.json` в корне проекта).
 
 Сейчас зарегистрирован один репозиторий — `s-e-o-texts` (модель `SEOText`, read-only) с кастомным геттером `resolve-seo`, который рендерит финальный title/h1/description страницы.
 
 ---
 
-## 1. HTTP-запросы
+## Доступные MCP инструменты
 
-### 1.1. Список всех SEO шаблонов (пагинация)
-
-```bash
-curl 'https://hata-new.doxer.work/api/restify/s-e-o-texts?perPage=5'
-```
-
-Ответ:
-```json
-{
-  "meta": { "current_page": 1, "last_page": 6, "per_page": 5, "total": 30 },
-  "data": [
-    {
-      "id": "86",
-      "type": "s_e_o_texts",
-      "attributes": {
-        "id": 86,
-        "page_type": 60,
-        "country_id": null,
-        "title": "Foreign real estate…",
-        "h1": "…",
-        "description": "…"
-      }
-    }
-  ]
-}
-```
-
-### 1.2. Фильтр по типу страницы (page_type)
-
-Значения `page_type` берутся из `App\Enums\Pages`:
-
-| Значение | Кейс |
-|----------|------|
-| 1 | CountryPage |
-| 2 | RegionPage |
-| 3 | CityPage |
-| 7 | CityType |
-| 10 | CityView |
-| 13 | BuyType |
-| 15 | BuyTypeView |
-| 53 | CityTypeView |
-| 56 | RentCityTypeView |
-| 60 | Main |
-
-```bash
-# Все шаблоны для "город + тип + вид" (CityTypeView)
-curl 'https://hata-new.doxer.work/api/restify/s-e-o-texts?page_type=53&perPage=5'
-```
-
-### 1.3. Фильтр по стране
-
-```bash
-curl 'https://hata-new.doxer.work/api/restify/s-e-o-texts?country_id=1'
-```
-
-### 1.4. Комбинация фильтров
-
-```bash
-curl 'https://hata-new.doxer.work/api/restify/s-e-o-texts?page_type=53&country_id=1'
-```
-
-### 1.5. Поиск по тексту
-
-Поиск идёт по полям `title`, `h1`, `description`, `route_example`:
-
-```bash
-curl 'https://hata-new.doxer.work/api/restify/s-e-o-texts?search=вилла'
-```
-
-### 1.6. Сортировка
-
-```bash
-# по убыванию id
-curl 'https://hata-new.doxer.work/api/restify/s-e-o-texts?sort=-id&perPage=3'
-
-# по page_type возрастанию
-curl 'https://hata-new.doxer.work/api/restify/s-e-o-texts?sort=page_type'
-```
-
-### 1.7. Получить одну запись
-
-```bash
-curl 'https://hata-new.doxer.work/api/restify/s-e-o-texts/86'
-```
-
-### 1.8. Геттер `resolve-seo` — рендер готового SEO
-
-Шаблоны содержат плейсхолдеры `VAR_COUNTRY`, `VAR_CITY`, `VAR_TYPE` и т.д. Геттер подставляет их и возвращает готовый текст для конкретной страницы.
-
-Параметры (все опциональные):
-- `deal` — `buy` или `rent` (по умолчанию `buy`)
-- `country_slug`, `region_slug`, `city_slug`
-- `type_label` — название типа объекта (`Вилла`, `Апартаменты`)
-- `view_label` — название вида (`Морской вид`)
-
-```bash
-# Купить виллы с морским видом в Каталонии
-curl 'https://hata-new.doxer.work/api/restify/s-e-o-texts/getters/resolve-seo?deal=buy&country_slug=spain&region_slug=catalonia&type_label=Вилла&view_label=Морской%20вид'
-```
-
-Ответ:
-```json
-{
-  "deal": "buy",
-  "country": "spain",
-  "region": "catalonia",
-  "city": null,
-  "type": "Вилла",
-  "view": "Морской вид",
-  "title": "Купить вилла in Каталонияс видом морской вид, цены от 13 989 $ ┋ ХатаМатата",
-  "h1": "Купить вилла in Каталония  с видом морской вид",
-  "description": "Продажа вилла за границей морской вид ┋ in Каталония | Цены от 13 989 $ до 8 043 896 $ 176 объектов",
-  "breadcrumbs_title": null
-}
-```
-
-### 1.9. Список всех доступных геттеров
-
-```bash
-curl 'https://hata-new.doxer.work/api/restify/s-e-o-texts/getters'
-```
+| Инструмент | Что делает |
+|------------|-----------|
+| `global-search` | Поиск по всем репозиториям (по полям из `$search`) |
+| `discover-repositories` | Список доступных репозиториев |
+| `get-repository-operations` | Операции конкретного репо (index/show/getters/actions) |
+| `get-operation-details` | Схема параметров одной операции |
+| `execute-operation` | Запуск произвольной операции |
+| `s-e-o-texts-index-tool` | Список/пагинация SEOText с фильтрами `page_type`, `country_id`, сортировкой и поиском |
+| `s-e-o-texts-show-tool` | Одна запись по id |
+| `s-e-o-texts-resolve-seo-getter-tool` | Рендер готового SEO (главная фича) |
 
 ---
 
-## 2. MCP через Claude Code
+## Примеры промптов для Claude
 
-Если `.mcp.json` в корне содержит `hatamatata-restify`, Claude увидит инструменты:
+### Обзор структуры
 
-- `mcp__hatamatata-restify__discover-repositories`
-- `mcp__hatamatata-restify__get-repository-operations`
-- `mcp__hatamatata-restify__get-operation-details`
-- `mcp__hatamatata-restify__execute-operation`
-- `mcp__hatamatata-restify__global-search`
+> Через `hatamatata-restify` покажи, какие репозитории и операции у них доступны.
 
-### Примеры промптов
+Claude вызовет `discover-repositories` → `get-repository-operations` и вернёт карту.
 
-> Через `hatamatata-restify` покажи, какие репозитории доступны.
+### Список шаблонов с фильтром
 
-> Найди в `s-e-o-texts` первые 5 шаблонов с `page_type=53`.
+> Через `s-e-o-texts-index-tool` дай первые 5 шаблонов с `page_type=53` (город+тип+вид).
 
-> Найди все SEO-шаблоны, где title содержит «вилла», отсортируй по id убыванию.
+> Найди первые 10 шаблонов где `country_id=1`, отсортированные по id убыванию.
 
-> Покажи SEOText id=86.
+### Поиск
 
-> Вызови геттер `resolve-seo` на `s-e-o-texts` с параметрами `deal=buy`, `country_slug=spain`, `region_slug=catalonia`, `type_label=Вилла`, `view_label=Морской вид`.
+> Через `global-search` найди все записи где встречается "villa".
 
-> Через `global-search` найди упоминания «Барселона» во всех репозиториях.
+> Используя `s-e-o-texts-index-tool` с параметром `search=вилла` верни первые 3 совпадения.
 
----
+### Одна запись
 
-## 3. Авторизация и запись
+> Через `s-e-o-texts-show-tool` покажи SEOText id=86.
 
-`SEOTextRepository` сейчас настроен read-only:
+### Рендер готового SEO (самое полезное)
 
-| Операция | Разрешено |
-|----------|-----------|
-| index / show / getters | ✅ |
-| store / update / delete | ❌ |
+> Используй `s-e-o-texts-resolve-seo-getter-tool` для `deal=buy, country_slug=spain, type_label=Вилла`. Дай title, h1, description.
 
-Чтобы разрешить запись — снять `return false` в `authorizedToStore` / `authorizedToUpdate` / `authorizedToDelete` в `app/Restify/SEOTextRepository.php` и добавить валидационные правила в поля.
+> Отрендери SEO для страницы аренды апартаментов в Барселоне с морским видом:
+> `deal=rent, country_slug=spain, region_slug=catalonia, city_slug=barcelona, type_label=Апартаменты, view_label=Морской вид`
+
+### Сравнение вариантов
+
+> Отрендери SEO для вилл в Испании в двух вариантах: buy и rent. Покажи в таблице title/h1/description.
 
 ---
 
-## 4. Добавление новых репозиториев
+## Значения `page_type`
+
+Берутся из `App\Enums\Pages`:
+
+| Значение | Кейс | Описание |
+|----------|------|----------|
+| 1 | CountryPage | Страница страны |
+| 2 | RegionPage | Страница региона |
+| 3 | CityPage | Страница города |
+| 4 | Main | Главная |
+| 5 | CountryType | Страна + тип |
+| 7 | CityType | Город + тип |
+| 10 | CityView | Город + вид |
+| 11 | BuyPage | Купить |
+| 12 | RentPage | Арендовать |
+| 13 | BuyType | Купить + тип |
+| 15 | BuyTypeView | Купить + тип + вид |
+| 53 | CityTypeView | Город + тип + вид |
+| 56 | RentCityTypeView | Аренда: город + тип + вид |
+
+Всего 60 значений — полный список в `app/Enums/Pages.php`.
+
+---
+
+## Параметры `resolve-seo` getter
+
+Все опциональные:
+
+| Параметр | Тип | Пример |
+|----------|-----|--------|
+| `deal` | `buy` или `rent` | `buy` (дефолт) |
+| `country_slug` | string | `spain` |
+| `region_slug` | string | `catalonia` |
+| `city_slug` | string | `barcelona` |
+| `type_label` | string | `Вилла`, `Апартаменты` |
+| `view_label` | string | `Морской вид` |
+
+Геттер резолвит слаги в модели, подставляет переменные в шаблоны через `FilterSeo` и возвращает `{title, h1, description, breadcrumbs_title}`.
+
+---
+
+## Авторизация
+
+- **MCP** — работает без токенов. Ходит через stdio, напрямую через Eloquent.
+- **Репозиторий** — read-only: `store`/`update`/`delete` вернут 403.
+- **Write доступ** — открыть можно в `app/Restify/SEOTextRepository.php` (заменить `return false` в `authorizedToStore`/`Update`/`Delete`) + добавить валидацию в поля.
+
+---
+
+## Добавление новых репозиториев
 
 ```bash
 php artisan restify:repository CountryRepository
 ```
 
-Это создаст `app/Restify/CountryRepository.php`. После определения `$search`, `$match`, `$sort` и `fields()` он автоматически появится в MCP как набор tools без дополнительного кода.
+Чтобы он автоматически появился в MCP:
+
+```php
+use Binaryk\LaravelRestify\MCP\Concerns\HasMcpTools;
+
+class CountryRepository extends Repository
+{
+    use HasMcpTools;
+
+    public function mcpAllowsShow(): bool { return true; }
+    public function mcpAllowsGetters(): bool { return true; }
+
+    public static array $search = ['name', 'slug'];
+    public static array $match = ['parent_id' => 'integer'];
+    // ...
+}
+```
+
+После `config:clear` и рестарта MCP-сессии — tools вида `countries-index-tool`, `countries-show-tool` появятся автоматически.
